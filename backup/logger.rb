@@ -38,7 +38,7 @@ module Backup
     end
 
     def self.log_line(line)
-      self.log("#{Time.now} : #{line}\n")
+      self.log("#{Time.now} | #{line}\n")
       puts line
     end
 

@@ -1,7 +1,6 @@
 require File.join(File.dirname(__FILE__), "backup/config")
 require 'digest'
 
-
 class FileScanner
   attr_reader :config, :logger, :database
   def initialize()
@@ -20,7 +19,7 @@ class FileScanner
       puts "usage: 'scanner.rb config-filename'"
       exit 1
     end
-    config = Backup::Config.new(config_filename)
+    config = Backup::Config.generate_config(config_filename)
   end
   
   def check_pid
