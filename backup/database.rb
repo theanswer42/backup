@@ -1,13 +1,19 @@
 require "sqlite3"
 require File.join(File.dirname(__FILE__), "logger")
 
+# TODO: remove migrations, instead just one "init" method and sql file
+# Tests for init
+# 
+
+
 module Backup
   class Database
-    attr_reader :db
+    attr_reader :db, :db_name
     def initialize(name, config)
-      db_filename = File.join(config["data_dir"], "#{name}.db")
-      @db = SQLite3::Database.new(db_filename)
-      migrate()
+      @db_name = name
+      @db = SQLite3::Database.new(File.join(config.data_dir, "#{name}.db"))
+      @db.results_as_hash = true
+      db_init()
     end
 
     def close()
@@ -15,10 +21,10 @@ module Backup
     end
 
     # API for locations
-    # This could potentially be moved in another layer on top of the db layer, but right now
+    # This should be moved in another layer on top of the db layer, but right now
     # no need to.
     def create_location(location_id, location, status, scanned_at)
-      result = query("insert into locations(location_id, location, status, scanned_at values (?, ?, ?, ?);", [location_id, location, status, scanned_at])
+      result = query("insert into locations(location_id, location_path, status, scanned_at) values (?, ?, ?, ?);", [location_id, location, status, scanned_at.to_i])
     end
 
     def update_location(location_id, update)
@@ -26,70 +32,62 @@ module Backup
       sql = []
       update.each do |key, value|
         sql << "#{key} = ?"
-        values = value
+        values << (key.to_s == "scanned_at" ? value.to_i : value)
       end
       values << location_id
       result = query("update locations set #{sql.join(',')} where location_id = ?", values)
     end
 
     def get_location(location_id)
-      result = get_first_result("select location_id, location, status, scanned_at from locations where location_id='#{location_id}';")
-      return {location_id: result[0], location: result[1], status: result[2], scanned_at: result[3])
+      get_first_result("select * from locations where location_id=?;", location_id)
     end
     
     private
+
+    def query(query, values)
+      result_set = db.query(query, values)
+      result = []
+      result_set.each do |row|
+        result << row
+      end
+      result_set.close
+
+      Backup::Logger.log("query:\nSQL:\n#{query}\nVALUES:\n#{values.inspect}\n\nRESULT:\n#{result.inspect}")
+      result
+    end
     
-    def current_db_version()
-      if get_first_row("select name from sqlite_master where type='table' and name='versions';")
-        return -1
-      else
-        version = get_first_value("select max(version) from versions;")
-        if version
-          return version.to_i
-        else
-          return -1
-        end
+    def db_init
+      if !get_first_row("select name from sqlite_master where type='table' and name='versions';")
+        init_sql = File.read(File.join(File.dirname(__FILE__), "../sql/#{self.db_name}.sql"))
+        init_sql << "create table versions(version int(11) not null);\n"
+        init_sql << "insert into versions values (#{Time.now.to_i});\n"
+        execute_batch(init_sql);
       end
     end
 
+    def execute_batch(sql)
+      result = db.execute_batch(sql)
+      Backup::Logger.log("execute:\nSQL:\n#{sql}\n\nRESULT:\n#{result.inspect}")
+      result
+    end
+    
     def execute(sql)
       result = db.execute(sql)
-      Backup::Logger.log("execute:\nSQL:\n#{migration_filename}\nQUERY:\n#{sql}\n\nRESULT:\n#{result.inspect}")
+      Backup::Logger.log("execute:\nSQL:\n#{sql}\n\nRESULT:\n#{result.inspect}")
       result
     end
 
-    def get_first_result(sql)
-      result = db.get_first_result(sql)
-      Backup::Logger.log("get_first_result:\nSQL:\n#{migration_filename}\nQUERY:\n#{sql}\n\nRESULT:\n#{result.inspect}")
+    def get_first_row(sql)
+      result = db.get_first_row(sql)
+      Backup::Logger.log("get_first_result:\nSQL:\n#{sql}\n\nRESULT:\n#{result.inspect}")
       result
     end
 
     def get_first_value(sql)
       result = db.get_first_value(sql)
-      Backup::Logger.log("get_first_value:\nSQL:\n#{migration_filename}\nQUERY:\n#{sql}\n\nRESULT:\n#{result.inspect}")
+      Backup::Logger.log("get_first_value:\nQUERY:\n#{sql}\n\nRESULT:\n#{result.inspect}")
       result
     end
-
-    
-    def apply_migrations(current_version)
-      if current_version < 0
-        execute("create table version(version int(11) not null);")
-      end
-      migrations_dir = File.join(File.dirname(__FILE__), "../sql/#{name}")
-      Dir.glob(File.join(migrations_dir, "**", "*.sql")).sort.each do |migration_filename|
-        version = File.basename(migration_filename, File.extname(migration_filename)).to_i
-        next if version <= current_version
-        sql = File.read(migration_filename)
-        sql << "\ninsert into versions values(#{version});"
-        execute(sql)
-      end
-      
-    end
-    
-    def migrate()
-      current_version = current_db_version()
-      apply_migrations(current_version)
-    end
-    
+  
   end
 end
