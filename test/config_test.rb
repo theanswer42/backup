@@ -12,9 +12,6 @@ class TestConfig < MiniTest::Unit::TestCase
     FileUtils.rm_rf(@working_dir)
     FileUtils.mkdir_p(@working_dir)
   end
-  def teardown
-    # FileUtils.rm_rf(@configdir)
-  end
 
   def write_config(name, config)
     filename = File.join(@config_dir, "#{name}.yml")

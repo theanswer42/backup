@@ -25,10 +25,9 @@ module Backup
       config.excludes = excludes
 
       base_dir = config.base_dir
-      config.working_dir = File.join(base_dir, "working")
       config.scanner_dir = File.join(base_dir, "scanner")
       config.data_dir = File.join(base_dir, "data")
-      config.pid_file = File.join(base_dir, "run", "scanner.pid")
+      config.pid_file = File.join(base_dir, "scanner.pid")
       config.log_dir = File.join(base_dir, "log")
 
       config

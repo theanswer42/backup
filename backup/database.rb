@@ -39,7 +39,7 @@ module Backup
     end
 
     def get_location(location_id)
-      get_first_result("select * from locations where location_id=?;", location_id)
+      get_first_row("select * from locations where location_id=?;", location_id)
     end
     
     private
@@ -77,8 +77,8 @@ module Backup
       result
     end
 
-    def get_first_row(sql)
-      result = db.get_first_row(sql)
+    def get_first_row(sql, *params)
+      result = db.get_first_row(sql, params)
       Backup::Logger.log("get_first_result:\nSQL:\n#{sql}\n\nRESULT:\n#{result.inspect}")
       result
     end

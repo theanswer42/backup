@@ -7,11 +7,14 @@ module Backup
     def initialize(name, log_dir)
       @logfilename = File.join(log_dir, "#{name}_#{Time.now.to_i}_#{rand(1000)}.log")
       @logfile = File.open(@logfilename, "a")
+      @log_open = true
       self.class.registerLogger(self)
     end
 
     def close
+      return unless @log_open
       @logfile.close
+      @log_open = false
     end
     
     def log(text, options={})
