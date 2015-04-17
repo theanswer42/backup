@@ -23,12 +23,12 @@ class FileScanner
   end
   
   def check_pid
-    if File.exists?(config.pid_file)
-      @pid_exists = true
-      Backup::Logger.log_line("Another scanner process is running: #{File.read(config['pid_file'])}")
-      raise "Another scanner process is running: #{File.read(config['pid_file'])}"
+    if File.exists?(config.scanner_pid_file)
+      @pid_exists = File.read(config.scanner_pid_file)
+      Backup::Logger.log_line("Another scanner process is running: #{@pid_exists}")
+      raise "Another scanner process is running: #{@pid_exists)}"
     end
-    pid = File.open(config.pid_file, "w")
+    pid = File.open(config.scanner_pid_file, "w")
     pid << "#{Process.pid}\n"
     pid.close
     return true
@@ -36,14 +36,14 @@ class FileScanner
 
   def release_pid
     if !@pid_exists
-      FileUtils.rm_f(config.pid_file)
+      FileUtils.rm_f(config.scanner_pid_file)
     end
   end
 
   def scan
     check_pid
 
-    setup_working_dir
+    FileUtils.mkdir_p(config.scanner_dir)
     
     config.locations.each do |location|
       scan_location(location)
@@ -55,10 +55,6 @@ class FileScanner
     database.close
   end
 
-  def setup_working_dir
-    FileUtils.mkdir_p(config.scanner_dir)
-  end
-
   def exclude_file(path)
     config.excludes.detect {|r| path.match(r) }
   end
@@ -66,7 +62,7 @@ class FileScanner
   def scan_location(location)
     location_id = Digest::SHA256.hexdigest(location)
     working_dir = config.scanner_dir
-    location_list_file = File.join(working_dir, location_id)
+    location_list_file = File.join(working_dir, "#{location_id}.list")
     location_lock_file = File.join(working_dir, "#{location_id}.lock")
     
     if File.exists?(location_list_file)
@@ -94,7 +90,7 @@ class FileScanner
       database.update_location(location_id, scanned_at: Time.now)
     end
   rescue Exception => e
-    Backup::Logger.log("FileScanner.scan_location, exception #{e.message}\n#{e.backtrace.join("\n")}\n")
+    Backup::Logger.log_exception(e)
     FileUtils.rm_f(location_list_file)
   ensure
     FileUtils.rm_f(location_lock_file)

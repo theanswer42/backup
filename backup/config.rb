@@ -24,10 +24,16 @@ module Backup
       end
       config.excludes = excludes
 
+      unless config.hostname
+        raise "Config MUST have a hostname"
+      end
+
       base_dir = config.base_dir
       config.scanner_dir = File.join(base_dir, "scanner")
+      config.backup_dir = File.join(base_dir, "backup")
       config.data_dir = File.join(base_dir, "data")
-      config.pid_file = File.join(base_dir, "scanner.pid")
+      config.scanner_pid_file = File.join(base_dir, "scanner.pid")
+      config.backup_pid_file = File.join(base_dir, "backup.pid")
       config.log_dir = File.join(base_dir, "log")
 
       config

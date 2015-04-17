@@ -24,7 +24,7 @@ module Backup
       end
       if options[:verbose]
         puts text
-      end    
+      end
     end
 
     def self.registerLogger(logger)
@@ -52,5 +52,10 @@ module Backup
         puts text
       end
     end
+
+    def self.log_exception(e)
+      self.log("#{Time.now} | Exception: #{e.message}\nBacktrace:\n#{e.backtrace.join("\n")}\n", verbose: true)
+    end
+
   end
 end
