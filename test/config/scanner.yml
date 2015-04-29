@@ -1,0 +1,9 @@
+---
+:hostname: test
+:gpg_email: sdlfkj@kljsf.com
+:locations:
+- "/home/sagar/source/atlantis/backup/test/locations/location1"
+:base_dir: "./test_working"
+:excludes:
+- "~$"
+- doc$

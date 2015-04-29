@@ -1,7 +1,7 @@
 require "./test_helper"
 require "fileutils"
 require "yaml"
-require_relative "../backup/config"
+require_relative "../lib/config"
 
 class TestConfig < MiniTest::Unit::TestCase
   def setup
@@ -23,7 +23,7 @@ class TestConfig < MiniTest::Unit::TestCase
   
   def test_resolve_locations
     absolute_location = File.expand_path(File.join(File.dirname(__FILE__), "locations", "location1"))
-    yconfig = {locations: [absolute_location, "./locations/location2"],  base_dir: @working_dir, excludes: ["~$", "doc$"] }
+    yconfig = {hostname: "test", gpg_email: "backup@test.com", locations: [absolute_location, "./locations/location2"],  base_dir: @working_dir, excludes: ["~$", "doc$"] }
     filename = write_config("resolve_locations", yconfig)
     config = Backup::Config.generate_config(filename)
     assert_equal 1, config.locations.length
@@ -34,10 +34,35 @@ class TestConfig < MiniTest::Unit::TestCase
     assert config.excludes.detect {|e| "a_word_doc.doc".match(e) }
         
     assert config.base_dir
-    assert config.working_dir
     assert config.scanner_dir
     assert config.data_dir
-    assert config.pid_file
+    assert config.scanner_pid_file
+    assert config.backup_pid_file
     assert config.log_dir
+    assert config.hostname
+    assert config.gpg_email
+  end
+
+  def test_requires_hostname_and_gpg_email
+    yconfig = {gpg_email: "backup@test.com", locations: [],  base_dir: @working_dir, excludes: ["~$", "doc$"] }
+    filename = write_config("config1", yconfig)
+    failed = false
+    begin
+      config = Backup::Config.generate_config(filename)
+    rescue Backup::ConfigError
+      failed = true
+    end
+    assert failed
+
+    yconfig = {hostname: "test", locations: [],  base_dir: @working_dir, excludes: ["~$", "doc$"] }
+    filename = write_config("config2", yconfig)
+    failed = false
+    begin
+      config = Backup::Config.generate_config(filename)
+    rescue Backup::ConfigError
+      failed = true
+    end
+    assert failed
+
   end
 end

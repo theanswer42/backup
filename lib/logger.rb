@@ -16,6 +16,10 @@ module Backup
       @logfile.close
       @log_open = false
     end
+
+    def log_open?
+      @log_open
+    end
     
     def log(text, options={})
       logfile << text
@@ -46,7 +50,7 @@ module Backup
     end
 
     def self.log(text, options={})
-      if @logger
+      if @logger && @logger.log_open?
         @logger.log(text, options)
       else
         puts text

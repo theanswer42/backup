@@ -1,6 +1,6 @@
 require "./test_helper"
 require "fileutils"
-require_relative "../backup/logger"
+require_relative "../lib/logger"
 
 class TestLogger < MiniTest::Unit::TestCase
   def setup

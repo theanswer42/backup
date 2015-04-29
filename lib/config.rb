@@ -1,5 +1,6 @@
 require 'yaml'
 require 'ostruct'
+require File.join(File.dirname(__FILE__), "errors")
 require File.join(File.dirname(__FILE__), "logger")
 
 module Backup
@@ -25,7 +26,12 @@ module Backup
       config.excludes = excludes
 
       unless config.hostname
-        raise "Config MUST have a hostname"
+        Backup::Logger.log_line("ERROR: Config: Missing hostname")
+        raise ConfigError.new("Config MUST have a hostname")
+      end
+      unless config.gpg_email
+        Backup::Logger.log_line("ERROR: Config: missing gpg email")
+        raise ConfigError.new("config MUST have a gpg identity email address")
       end
 
       base_dir = config.base_dir

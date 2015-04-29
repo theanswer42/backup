@@ -3,13 +3,15 @@ require "fileutils"
 require "yaml"
 require "ostruct"
 require "byebug"
-require_relative "../backup/file_scanner.rb"
+require_relative "../lib/file_scanner.rb"
 
 class TestFileScanner < MiniTest::Test
   def setup()
     @working_dir = File.join(File.dirname(__FILE__), "test_working")
     @fixtures_dir = File.join(File.dirname(__FILE__), "fixtures")
     @config_dir = File.join(File.dirname(__FILE__), "config")
+
+    @base_config = {hostname: "test", gpg_email: "sdlfkj@kljsf.com"}
     
     FileUtils.rm_rf(@working_dir)
     FileUtils.mkdir_p(@working_dir)
@@ -18,7 +20,6 @@ class TestFileScanner < MiniTest::Test
     # FileUtils.mkdir_p(File.join(@working_dir, "run"))
     # FileUtils.mkdir_p(File.join(@working_dir, "run"))
     
-
     FileUtils.rm_rf(@config_dir)
     FileUtils.mkdir_p(@config_dir)
   end
@@ -34,7 +35,7 @@ class TestFileScanner < MiniTest::Test
   def write_config(name, config)
     filename = File.join(@config_dir, "#{name}.yml")
     c = File.open(filename, "w")
-    c << config.to_yaml
+    c << @base_config.merge(config).to_yaml
     c.close
     filename
   end
@@ -48,7 +49,7 @@ class TestFileScanner < MiniTest::Test
     pidfile << "#{Process.pid}\n"
     pidfile.close
     
-    f = FileScanner.new(File.join(@config_dir, "scanner.yml"))
+    f = Backup::FileScanner.new(File.join(@config_dir, "scanner.yml"))
     failed = false
     begin
       f.scan
@@ -63,7 +64,7 @@ class TestFileScanner < MiniTest::Test
     yconfig = {locations: [],  base_dir: @working_dir, excludes: ["~$", "doc$"] }
     filename = write_config("scanner", yconfig)
     
-    f = FileScanner.new(File.join(@config_dir, "scanner.yml"))
+    f = Backup::FileScanner.new(File.join(@config_dir, "scanner.yml"))
     f.scan
     
     assert File.exists?(File.join(@working_dir, "scanner"))
@@ -76,7 +77,7 @@ class TestFileScanner < MiniTest::Test
     filename = write_config("scanner", yconfig)
 
     scan_time = Time.now.to_i
-    f = FileScanner.new(File.join(@config_dir, "scanner.yml"))
+    f = Backup::FileScanner.new(File.join(@config_dir, "scanner.yml"))
     f.scan
     
     assert File.exists?(File.join(@working_dir, "scanner"))
@@ -102,11 +103,11 @@ class TestFileScanner < MiniTest::Test
     location_id = Digest::SHA256.hexdigest(absolute_location)
         
     FileUtils.mkdir_p(File.join(@working_dir, "scanner"))
-    older_list = File.open(File.join(@working_dir, "scanner", location_id), "w")
+    older_list = File.open(File.join(@working_dir, "scanner", "#{location_id}.list"), "w")
     older_list << "something"
     older_list.close
     
-    f = FileScanner.new(File.join(@config_dir, "scanner.yml"))
+    f = Backup::FileScanner.new(File.join(@config_dir, "scanner.yml"))
     f.scan
 
     assert !File.exists?(File.join(@working_dir, "scanner.pid"))
@@ -125,14 +126,14 @@ class TestFileScanner < MiniTest::Test
     location_id = Digest::SHA256.hexdigest(absolute_location)
     config = OpenStruct.new()
     config.data_dir = File.join(@working_dir, "data")
-    database = Backup::Database.new("scanner", config)
+    database = Backup::Database.open("scanner", config)
     other_scan_time = Time.now-60
-    database.create_location(location_id, absolute_location, "enabled", other_scan_time)
-    database.create_location("2", "/a/b", "enabled", other_scan_time)
-    database.close
+    Backup::Location.create(location_id, absolute_location, "enabled", other_scan_time)
+    Backup::Location.create("2", "/a/b", "enabled", other_scan_time)
+    Backup::Database.close
     
     scan_time = Time.now.to_i
-    f = FileScanner.new(File.join(@config_dir, "scanner.yml"))
+    f = Backup::FileScanner.new(File.join(@config_dir, "scanner.yml"))
     f.scan
     
     assert File.exists?(File.join(@working_dir, "scanner"))
