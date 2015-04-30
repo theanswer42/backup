@@ -83,14 +83,13 @@ module Backup
       end
       
     rescue Exception => e
-      log_exception(e)
+      Backup::Logger.log_exception(e)
     ensure
       FileUtils.rm_f(working_filename)
       FileUtils.rm_f("#{working_filename}.gpg")
     end
     
     
-    private
     def run_command(command)
       command = "#{command} 2>&1"
       output = status = nil
@@ -116,7 +115,7 @@ module Backup
     end
     
     def compute_checksum(filename)
-      File.open(path, 'rb') do |io|
+      File.open(filename, 'rb') do |io|
         digest = Digest::SHA256.new
         buffer = ""
         digest.update(buffer) while io.read(4096, buffer)
@@ -129,7 +128,7 @@ module Backup
       if File.exists?(config.backup_pid_file)
         @pid_exists = File.read(config.backup_pid_file)
         Backup::Logger.log_line("Another scanner process is running: #{@pid_exists}")
-        raise "Another scanner process is running: #{@pid_exists)}"
+        raise "Another scanner process is running: #{@pid_exists}"
       end
       pid = File.open(config.backup_pid_file, "w")
       pid << "#{Process.pid}\n"

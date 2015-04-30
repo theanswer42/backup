@@ -8,4 +8,7 @@ module Backup
   class DatabaseError < InternalError
     
   end
+  class ValidationError < StandardError
+
+  end
 end

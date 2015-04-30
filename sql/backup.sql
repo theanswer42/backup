@@ -1,7 +1,7 @@
 create table failures(
   path varchar(1024) not null primary key
 );
-create table backups(
+create table files(
   file_id varchar(64) not null primary key,
   hostname varchar(256) not null,
   filename varchar(1024) not null,
@@ -10,4 +10,5 @@ create table backups(
   external_id varchar(1024),
   reference_file_id varchar(512)
 );
-create index backups_checksum on backups(checksum);
+create index files_checksum on files(checksum);
+

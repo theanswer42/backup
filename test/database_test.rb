@@ -27,6 +27,20 @@ class TestDatabase < MiniTest::Unit::TestCase
     assert_equal "locations", db.get_first_value("select name from sqlite_master where type='table' and name='locations';")
   end
 
+  def test_backup_db_init
+    config = OpenStruct.new()
+    config.data_dir = @working_dir
+
+    db = Backup::Database.open("backup", config)
+    db.close
+    assert File.exists?(File.join(@working_dir, "backup.db"))
+    db = SQLite3::Database.new(File.join(@working_dir, "backup.db"))
+    t = Time.now.to_i
+    assert (t-db.get_first_value("select max(version) from versions")) < 2
+
+    assert_equal "files", db.get_first_value("select name from sqlite_master where type='table' and name='files';")
+  end
+
   def install_db(name)
     FileUtils.cp(File.join(@fixtures_dir, name), File.join(@working_dir, "scanner.db"))
     config = OpenStruct.new()
