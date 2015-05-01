@@ -23,19 +23,19 @@ module Backup
       @glacier = Aws::Glacier::Client.new()
     end
     
-    MAX_UPLOAD_SIZE = 8.megabytes
+    MAX_UPLOAD_SIZE = 8 * 1024 * 1024
     def upload_file(file_id, path, sha256sum)
       raise Backup::UploaderError.new("File #{path} size is zero") if File.size(path)==0
 
       # for now, we'll only support simple uploads
       file_hashes = compute_hashes(path, MAX_UPLOAD_SIZE)
       
-      raise Backup::UploaderError.new("checksum mismatch on #{path}") file_hashes[:linear_hash] != sha256sum
+      raise Backup::UploaderError.new("checksum mismatch on #{path}") if file_hashes[:linear_hash] != sha256sum
       
       if file_hashes[:hashes_for_transport].length > 1
         return multipart_upload(file_id, path, sha256sum, file_hashes)
       else
-        response = @glacier.upload_archive(account_id: "", vault_name: vault_name, checksum: file_hashes[:tree_hash], body: File.open(path, 'rb'), archive_description: file_id)
+        response = @glacier.upload_archive(account_id: "-", vault_name: vault_name, checksum: file_hashes[:tree_hash], body: File.open(path, 'rb'), archive_description: file_id)
         raise Backup::UploaderError.new("No archive-id returned!  #{response.inspect}") unless response.archive_id
         raise Backup::UploaderError.new("checksum sent back does not match!") unless response.checksum == file_hashes[:tree_hash]
         return response.archive_id
@@ -44,13 +44,12 @@ module Backup
     
     private
     def multipart_upload(file_id, path, sha256sum, file_hashes)
-      file_hashes = options[:file_hashes]
       part_hashes = file_hashes[:hashes_for_transport]
       
       response = @glacier.initiate_multipart_upload(account_id: '-', vault_name: vault_name, archive_description: file_id, part_size: MAX_UPLOAD_SIZE)
       upload_id = response.upload_id
       
-      file_parts_for_upload(path, part_size) do |index, io, range|
+      file_parts_for_upload(path, MAX_UPLOAD_SIZE) do |index, io, range|
         tree_hash = part_hashes[index].to_s
         response = @glacier.upload_multipart_part(account_id: '-', vault_name: vault_name, upload_id: upload_id, checksum: tree_hash, range: range, body: io)
         raise Backup::UploaderError.new("Hash mismatch for part: #{index}") unless tree_hash == response.checksum
@@ -79,12 +78,13 @@ module Backup
 
     # computes a linear and tree hash for the given file
     # will only load one meg of the file at a time.
+    ONE_MB = 1 * 1024 * 1024
     def compute_hashes(path, part_size)
       file = File.open(path, 'rb')
       linear_hash = Digest::SHA256.new
       
       parts = []
-      while(data = file.read(1.megabyte))
+      while(data = file.read(ONE_MB))
         linear_hash << data
         
         sha256sum = Digest::SHA256.new
@@ -92,7 +92,7 @@ module Backup
         parts << sha256sum
       end
       
-      current_part_size = 1.megabyte
+      current_part_size = ONE_MB
       parts_for_transport = []
       next_parts = []
 
@@ -101,7 +101,7 @@ module Backup
         break if parts.length == 1
 
         index = 0
-        while(!(pair = parts.slice(index,2)).blank?)
+        while(!((pair = parts.slice(index,2))||[]).empty?)
           if pair.size == 1
             next_parts << pair[0] 
             break
