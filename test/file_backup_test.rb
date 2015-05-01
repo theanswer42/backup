@@ -53,7 +53,7 @@ class TestFileBackup < MiniTest::Test
   end
 
   def generate_default_config(overrides={})
-    config = {hostname: "test", gpg_email: "sdlfkj@kljsf.com", base_dir: @working_dir, excludes: ["~$", "doc$"] }.merge(overrides)
+    config = {hostname: "test", gpg_email: "test@backup", base_dir: @working_dir, excludes: ["~$", "doc$"] }.merge(overrides)
 
     filename = File.join(@config_dir, "scanner.yml")
     cf = File.open(filename, "w")

@@ -23,7 +23,7 @@ class TestBFile < MiniTest::Unit::TestCase
     db
   end
   
-  def test_exists
+  def test_find_by_checksum
     install_db("backup1.db")
     
     config = OpenStruct.new()
@@ -31,9 +31,9 @@ class TestBFile < MiniTest::Unit::TestCase
 
     now = Time.now
 
-    assert Backup::BFile.exists?("abcd")
-    assert Backup::BFile.exists?("efgh")
-    assert !Backup::BFile.exists?("efgh1")
+    assert Backup::BFile.find_by_checksum("abcd")
+    assert Backup::BFile.find_by_checksum("efgh")
+    assert !Backup::BFile.find_by_checksum("efgh1")
   end
   
   def test_create_simple

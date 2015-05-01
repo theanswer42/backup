@@ -3,9 +3,8 @@ require File.join(File.dirname(__FILE__), "database")
 module Backup
   class BFile
     
-    def self.exists?(checksum)
-      file = Backup::Database.database.get_first_row("select * from files where checksum=?;", checksum)
-      !file.nil?
+    def self.find_by_checksum(checksum)
+      Backup::Database.database.get_first_row("select * from files where checksum=?;", checksum)
     end
 
     def self.create(attributes)

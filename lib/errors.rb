@@ -11,4 +11,7 @@ module Backup
   class ValidationError < StandardError
 
   end
+  class UploaderError < StandardError
+
+  end
 end

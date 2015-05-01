@@ -4,17 +4,20 @@ require "digest"
 
 require File.join(File.dirname(__FILE__), "config")
 require File.join(File.dirname(__FILE__), "database")
+require File.join(File.dirname(__FILE__), "bfile")
+require File.join(File.dirname(__FILE__), "amazon_uploader")
 
 module Backup
   class FileBackup
-    attr_reader :config, :logger, :database
+    attr_reader :config, :logger
     def initialize(config_filename)
       @config = read_config(config_filename)
       @logger = Backup::Logger.new("backup", config.log_dir)
-      @database = Backup::Database.new("backup", config)
+      Backup::Database.open("backup", config)
+      @amazon_uploader = Backup::AmazonUploader.new(config)
     rescue Exception => e
       @logger.close() if @logger
-      @database.close() if @database
+      Backup::Database.close()
     end
 
     def work()
@@ -40,7 +43,7 @@ module Backup
     ensure
       release_pid
       logger.close
-      database.close
+      Backup::Database.close()
     end
 
     private
@@ -65,20 +68,21 @@ module Backup
       checksum = compute_checksum(working_filename)
       file_id = compute_file_id(filename, checksum)
 
-      if reference_file = database.file_exists?(checksum)
+      if reference_file = Backup::BFile.find_by_checksum(checksum)
         # Only do this if its not the same file
         unless file_id == reference_file.file_id
-          database.insert_file(file_id: file_id, filename: filename, checksum: checksum, reference_file_id: "#{reference_file.hostname}:#{reference_file.file_id}")
+          Backup::BFile.create(file_id: file_id, hostname: hostname, filename: filename, checksum: checksum, backed_up_at: Time.now, reference_file_id: "#{reference_file['hostname']}:#{reference_file['file_id']}")
         end
       else
         # Encrypt
         run_command("gpg --output \"#{working_filename}.gpg\" --encrypt --recipient \"#{config.gpg_email}\" \"#{working_filename}\"")
         
         # Upload
-        external_id = Backup::AmazonUploader.upload_file(file_id, "#{working_filename}.gpg")
+        # note: for the amazon uploader, checksum must be a sha256sum
+        external_id = Backup::AmazonUploader.upload_file(file_id, "#{working_filename}.gpg", checksum)
 
         # Insert into db
-        database.insert_file(file_id: file_id, filename: filename, checksum: checksum, external_id: external_id)
+        Backup::BFile.create(file_id: file_id, hostname: hostname, filename: filename, checksum: checksum, external_id: external_id, backed_up_at: Time.now)
         
       end
       
