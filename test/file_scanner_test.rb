@@ -1,4 +1,5 @@
-require "./test_helper"
+require File.join(File.dirname(__FILE__), "test_helper")
+
 require "fileutils"
 require "yaml"
 require "ostruct"
@@ -22,6 +23,7 @@ class TestFileScanner < MiniTest::Test
     
     FileUtils.rm_rf(@config_dir)
     FileUtils.mkdir_p(@config_dir)
+    Backup::Database.close()
   end
 
   def install_db(name)

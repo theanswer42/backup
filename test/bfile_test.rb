@@ -1,4 +1,4 @@
-require "./test_helper"
+require File.join(File.dirname(__FILE__), "test_helper")
 require "fileutils"
 require "yaml"
 require "ostruct"
@@ -6,7 +6,7 @@ require "byebug"
 require_relative "../lib/database"
 require_relative "../lib/bfile"
 
-class TestBFile < MiniTest::Unit::TestCase
+class TestBFile < MiniTest::Test
   def setup()
     Backup::Database.close()
     @working_dir = File.join(File.dirname(__FILE__), "test_working")
